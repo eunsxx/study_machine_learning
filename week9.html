@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lecture 9. Optimization</title>
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['$', '$']],
+    displayMath: [['$$', '$$']],
+    packages: {'[+]': ['ams']}
+  },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2436;
+    --border: #2a3045;
+    --accent: #4f8ef7;
+    --accent2: #a78bfa;
+    --accent3: #34d399;
+    --warn: #f59e0b;
+    --danger: #f87171;
+    --text: #e2e8f0;
+    --text-muted: #8b9ab5;
+    --text-dim: #4a5568;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Serif KR', serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.85;
+    font-size: 15px;
+  }
+
+  /* ── 헤더 ── */
+  header {
+    background: linear-gradient(135deg, #0f1117 0%, #151b2e 60%, #1a1030 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 56px 0 44px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(79,142,247,.12), transparent);
+  }
+  header .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  header h1 {
+    font-size: clamp(28px, 5vw, 46px);
+    font-weight: 700;
+    background: linear-gradient(135deg, #e2e8f0 30%, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -.01em;
+  }
+
+  /* ── 레이아웃 ── */
+  .container { max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── 파트 구분자 ── */
+  .part-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 52px 0 36px;
+  }
+  .part-divider span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .14em;
+    color: var(--accent2);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .part-divider::before, .part-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+
+  /* ── 섹션 카드 ── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 36px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .section::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: .5;
+  }
+
+  /* ── 제목 ── */
+  h2 {
+    font-size: 19px;
+    font-weight: 700;
+    color: #c8d8f8;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  h2 .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    padding: 2px 8px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin: 22px 0 12px;
+    padding-left: 12px;
+    border-left: 3px solid var(--accent2);
+  }
+
+  /* ── 본문 ── */
+  p { margin-bottom: 14px; color: #cdd5e5; }
+
+  ul, ol { padding-left: 0; margin: 12px 0 16px; list-style: none; }
+
+  li {
+    position: relative;
+    padding: 8px 12px 8px 22px;
+    margin-bottom: 6px;
+    color: #cdd5e5;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid transparent;
+    transition: border-color .2s;
+  }
+  li:hover { border-color: var(--border); }
+  li::before {
+    content: '▸';
+    position: absolute;
+    left: 8px;
+    color: var(--accent);
+    font-size: 10px;
+    top: 10px;
+  }
+  ol { counter-reset: item; }
+  ol li { counter-increment: item; }
+  ol li::before {
+    content: counter(item);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent3);
+    background: rgba(52,211,153,.12);
+    border-radius: 3px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: 11px;
+    left: 8px;
+  }
+
+  /* 중첩 ol */
+  li ol { margin: 8px 0 0; }
+  li ol li { background: rgba(255,255,255,.03); }
+
+  /* ── 강조 ── */
+  strong { color: #f0f4ff; font-weight: 600; }
+
+  /* ── 수식 블록 ── */
+  .math-block {
+    background: rgba(10, 14, 28, .7);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 18px 24px;
+    margin: 16px 0;
+    overflow-x: auto;
+    text-align: center;
+  }
+
+  /* ── callout ── */
+  .callout {
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 18px 0;
+    border: 1px solid;
+  }
+  .callout-tip {
+    background: rgba(52,211,153,.07);
+    border-color: rgba(52,211,153,.25);
+  }
+  .callout-warn {
+    background: rgba(245,158,11,.07);
+    border-color: rgba(245,158,11,.25);
+  }
+  .callout-danger {
+    background: rgba(248,113,113,.07);
+    border-color: rgba(248,113,113,.25);
+  }
+  .callout-icon {
+    font-size: 16px;
+    margin-right: 6px;
+  }
+  .callout-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #f0f4ff;
+  }
+  .callout p { margin: 0; font-size: 14px; }
+
+  /* ── 테이블 ── */
+  .table-wrap { overflow-x: auto; margin: 18px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead tr { background: rgba(79,142,247,.1); }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: .04em;
+  }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: #cdd5e5;
+    vertical-align: top;
+  }
+  td:first-child { color: #f0f4ff; font-weight: 600; }
+  td:nth-child(2) {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    text-align: center;
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: rgba(255,255,255,.025); }
+
+  /* ── page 배지 ── */
+  .page-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 9px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  hr { display: none; }
+
+  /* ── 반응형 ── */
+  @media (max-width: 600px) {
+    .section { padding: 22px 18px; }
+    h2 { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="label">Machine Learning · Week 9</div>
+  <h1>Lecture 9. Optimization</h1>
+</header>
+
+<div class="container">
+
+<!-- ═══════════════════ PART 1 ═══════════════════ -->
+<div class="part-divider"><span>Part 1 — 손실 지형 &amp; 경사하강법</span></div>
+
+<!-- 1.1 -->
+<div class="section">
+  <h2><span class="num">1.1</span>손실 지형(Loss Landscape)의 기하학적 정의<span class="page-badge">Page 2</span></h2>
+  <p>최적화 알고리즘의 본질은 우리가 설계한 손실 함수 $\mathcal{L}(\theta)$의 결괏값을 최소화하는 최적의 가중치 파라미터 $\theta^*$를 찾아내는 과정입니다.</p>
+  <div class="math-block">$$\theta^{*}\leftarrow \arg\min_{\theta}-\sum_{i}\log p_{\theta}(y_{i}|x_{i})$$</div>
+  <ul>
+    <li><strong>공간의 시각적 단순화:</strong> 모델 파라미터 $\theta$가 오직 2개의 차원($\theta_1, \theta_2$)으로만 구성된 2D 벡터라고 가정합니다.</li>
+    <li><strong>3차원 곡면의 형성:</strong> 바닥 평면은 $\theta_1$축과 $\theta_2$축, Z축 고도가 손실값 $\mathcal{L}(\theta)$가 되어 하나의 '지형(Landscape)'을 형성합니다.</li>
+    <li><strong>기본 하강 알고리즘:</strong> 그래프 위의 까만색 점이 현재 파라미터 시작점입니다. 컴퓨터는 다음 두 단계를 반복하며 계곡 바닥을 탐색합니다.
+      <ol>
+        <li>현재 위치에서 손실 함수 값 $\mathcal{L}(\theta)$이 <strong>감소하는 방향 벡터 $v$</strong>를 탐색하여 결정합니다.</li>
+        <li>찾아낸 방향 $v$로 파라미터를 미세하게 전진시켜 업데이트합니다.</li>
+      </ol>
+      <div class="math-block">$$\theta\leftarrow\theta+\alpha v$$</div>
+    </li>
+    <li><strong>학습률 $\alpha$ (Learning Rate):</strong> 방향 벡터 앞에 곱해지는 아주 작은 상수. 가중치 갱신 속도를 조절하는 핵심 하이퍼파라미터입니다.</li>
+  </ul>
+</div>
+
+<!-- 1.2 -->
+<div class="section">
+  <h2><span class="num">1.2</span>1차원 곡선에서의 경사(Slope)와 이동 방향<span class="page-badge">Page 3</span></h2>
+  <p>방향 벡터 $v$를 결정하기 위해, 각 파라미터 축별로 손실 함수 $\mathcal{L}(\theta)$를 미분한 <strong>기울기(Slope)</strong>를 확인하면 내리막길의 방향을 수학적으로 도출할 수 있습니다.</p>
+  <ul>
+    <li><strong>음의 기울기 (Negative slope → 우측 이동):</strong> 기울기가 음수이면 오른쪽으로 갈수록 고도가 낮아지므로, 파라미터를 <strong>더하는($+$) 방향인 오른쪽으로 이동</strong>시켜야 손실이 감소합니다.</li>
+    <li><strong>양의 기울기 (Positive slope → 좌측 이동):</strong> 기울기가 양수이면 오른쪽으로 갈수록 고도가 높아지므로, 파라미터를 <strong>빼는($-$) 방향인 왼쪽으로 이동</strong>시켜야 내리막길로 내려갑니다.</li>
+    <li><strong>수학적 결론 (Gradient):</strong> 어느 차원이든 파라미터는 항상 <strong>기울기(Slope) 부호의 정반대 방향</strong>으로 움직여야 합니다.
+      <div class="math-block">$$v_{1}=-\frac{d\mathcal{L}(\theta)}{d\theta_{1}}, \quad v_{2}=-\frac{d\mathcal{L}(\theta)}{d\theta_{2}}$$</div>
+    </li>
+  </ul>
+  <h3>📐 다차원 확장: 그레이디언트(Gradient) 벡터</h3>
+  <p>실전 모델의 수많은 파라미터 차원별 편미분 값들을 정렬해 놓은 다차원 벡터를 <strong>그레이디언트(Gradient)</strong>라고 부릅니다.</p>
+  <div class="math-block">$$\nabla_{\theta}\mathcal{L}(\theta) = \begin{bmatrix} \frac{d\mathcal{L}(\theta)}{d\theta_{1}} \\ \frac{d\mathcal{L}(\theta)}{d\theta_{2}} \\ \vdots \\ \frac{d\mathcal{L}(\theta)}{d\theta_{n}} \end{bmatrix}$$</div>
+  <p>그레이디언트 벡터는 <strong>"현재 위치에서 손실 함수 고도가 가장 가파르게 상승하는 방향"</strong>을 가리킵니다. 따라서 이 방향 앞에 마이너스($-$)를 붙여 정반대로 전진하는 <strong>경사하강법(Gradient Descent)</strong> 공식을 성립시킵니다.</p>
+  <div class="math-block">$$\theta \leftarrow \theta - \alpha \nabla_{\theta}\mathcal{L}(\theta)$$</div>
+</div>
+
+<!-- 1.3 -->
+<div class="section">
+  <h2><span class="num">1.3</span>경사하강법의 등고선 시각화<span class="page-badge">Page 4</span></h2>
+  <p>3차원 손실 지형을 위에서 내려다본 <strong>등고선(Level set contours)</strong>을 통해 경사하강법의 최적화 경로를 분석할 수 있습니다.</p>
+  <ul>
+    <li><strong>등고선의 성질:</strong> 동일한 등고선 선상의 모든 파라미터 $\theta$값들은 <strong>완벽하게 동일한 손실 함수 결과값 $\mathcal{L}(\theta)$</strong>를 가집니다.</li>
+    <li><strong>업데이트 경로:</strong> 시작점 $\theta_0$에서 그레이디언트의 반대 방향 $-\nabla_{\theta}\mathcal{L}(\theta_0)$로, 학습률 $\alpha$ 보폭만큼 전진하여 다음 지점 $\theta_1$에 착지하는 과정을 반복하며 <strong>전역 최적점(Optimum)</strong>을 향해 전진합니다.</li>
+  </ul>
+</div>
+
+<!-- 1.4 -->
+<div class="section">
+  <h2><span class="num">1.4</span>그레이디언트 하강의 치명적인 한계<span class="page-badge">Page 5</span></h2>
+  <p>경사하강법이 항상 최적점을 향해 최단 거리로 직진할 것이라고 착각하지만, 실제로는 전혀 그렇지 않습니다.</p>
+  <h3>① "가장 가파른 방향이 항상 최선은 아니다"</h3>
+  <p>현재 위치에서 계산된 그레이디언트 벡터 $\nabla_{\theta}\mathcal{L}(\theta_0)$는 오직 <strong>"현재 발을 디디고 있는 그 한 점에서 가장 고도가 가파르게 변하는 방향"</strong>만을 가리킵니다. 이 방향은 전체 지형을 거시적으로 보고 최적점을 향해 가르는 직선 방향과 <strong>대부분의 경우 완벽하게 일치하지 않고 비껴갑니다</strong>.</p>
+  <h3>② 협곡 지형에서의 파멸적인 지그재그 진동 (Oscillation)</h3>
+  <p>손실 지형이 한쪽 축으로는 경사가 매우 가파르고, 다른 쪽 축으로는 완만한 <strong>좁고 긴 계곡(Narrow Valley) 형태</strong>라면, 모델은 가파른 절벽 벽면을 따라 <strong>좌우로 거칠게 튕겨 다니는 지그재그 진동(Red path) 현상</strong>에 갇히게 되며, 학습 속도가 파멸적으로 정체됩니다.</p>
+</div>
+
+<!-- ═══════════════════ PART 2 ═══════════════════ -->
+<div class="part-divider"><span>Part 2 — 볼록성 &amp; 비볼록 지형</span></div>
+
+<!-- 2.1 -->
+<div class="section">
+  <h2><span class="num">2.1</span>볼록성(Convexity)의 개념과 로지스틱 회귀<span class="page-badge">Page 6</span></h2>
+  <ul>
+    <li><strong>볼록 함수(Convex Function)의 수학적 정의:</strong> 함수 그래프 위의 임의의 두 점을 연결한 선분이 항상 함수 그래프보다 위쪽(above)에 위치하는 함수. 단 하나의 바닥으로 굴러떨어지는 매끄러운 밥그릇 모양입니다.</li>
+    <li><strong>선형 모델의 지형적 축복:</strong> 로지스틱 회귀(Logistic Regression)의 음의 우도 손실(Negative likelihood loss) 지형은 <strong>수학적으로 완벽한 볼록 함수임이 보장</strong>되어 있습니다.</li>
+    <li><strong>수렴의 보장:</strong> 볼록 함수 지형은 단순한 경사하강법만으로도 전역 최적점에 도달할 수 있다는 강력한 보장(strong guarantees)을 가집니다.</li>
+  </ul>
+</div>
+
+<!-- 2.2 -->
+<div class="section">
+  <h2><span class="num">2.2</span>심층 신경망(DNN)의 재앙: 비볼록(Non-convex) 지형<span class="page-badge">Page 7</span></h2>
+  <p>수많은 은닉층과 파라미터가 비선형적으로 결합한 심층 신경망의 손실 지형은 철저하게 <strong>비볼록(Non-convex)</strong> 구조를 가집니다.</p>
+  <ul>
+    <li><strong>시각화의 한계:</strong> 신경망은 매개변수의 개수가 상상 이상으로 거대하기 때문에 손실 표면(Loss surface)을 눈으로 직접 시각화하는 것은 극도로 어렵습니다.</li>
+    <li><strong>구조적 혁신의 차이:</strong> 일반적인 다층 신경망 아키텍처는 거칠고 뾰족한 형태를 띠지만, <strong>지름길 연결(with skip connections)을 도입한 신경망은 손실 지형이 매끄럽고 완만한 돔 형태로 완화</strong>됩니다.</li>
+  </ul>
+  <h3>⚠️ 경사하강법을 무력화하는 3대 난제</h3>
+  <ul>
+    <li><strong>지역 최적점 (Local Optima / Local Minima):</strong> 전역 최적점이 아님에도 주변이 온통 오르막길이라 그레이디언트가 0이 되는 가짜 바닥. 학습이 전역 최적점보다 <strong>터무니없이 나쁜(arbitrarily worse)</strong> 성능에서 끝나버릴 수 있습니다.</li>
+    <li><strong>플래토 (Plateau):</strong> 지형이 사막처럼 광활하고 평평하게 펼쳐진 구간. 기울기가 거의 0에 가까워져 가중치 업데이트가 완전히 멈춰 섭니다.</li>
+    <li><strong>안장점 (Saddle Point):</strong> 말 안장 모양처럼 어느 방향으로는 내리막길인데 다른 방향으로는 오르막길인 특이 지점. 미분값의 총합이 0으로 소멸하여 경사하강법은 탈출구를 찾지 못합니다.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════ PART 3 ═══════════════════ -->
+<div class="part-divider"><span>Part 3 — 지형 요약 &amp; 대규모 신경망의 반전</span></div>
+
+<!-- 3.1 -->
+<div class="section">
+  <h2><span class="num">3.1</span>손실 지형의 기하학적 요소 최종 요약<span class="page-badge">Page 8</span></h2>
+  <ul>
+    <li><strong>지역 최적점 (The local optimum):</strong> 주변 지형이 모두 오르막길인 골짜기 형태로, 그레이디언트가 0이 되어 갇히는 구간.</li>
+    <li><strong>플래토 (The plateau):</strong> 미분값이 사실상 0에 가깝게 늘어져 가중치가 거의 이동하지 못하는 광활한 평지.</li>
+    <li><strong>안장점 (The saddle point):</strong> 어느 축으로는 내리막길인데, 다른 축으로는 오르막길인 구조로 미분값이 0이 되는 특이 임계점.</li>
+  </ul>
+  <div class="callout callout-tip">
+    <div class="callout-title"><span class="callout-icon">💡</span>아키텍처 변형에 따른 지형의 극적인 변화 (with skip connections)</div>
+    <p>일반적인 다층 신경망 아키텍처는 매개변수가 너무 많아 시각화하기 매우 까다롭습니다. 그러나 연구 결과에 따르면, <strong>지름길 연결(Skip Connections)을 도입하는 순간 뾰족하고 거칠었던 비볼록 손실 지형이 완만하고 매끄러운 돔 형태로 극적으로 완화</strong>되어 최적화 난이도가 압도적으로 낮아집니다.</p>
+  </div>
+</div>
+
+<!-- 3.2 -->
+<div class="section">
+  <h2><span class="num">3.2</span>대규모 신경망의 반전: 로컬 미니마의 진실<span class="page-badge">Page 9</span></h2>
+  <p>"수많은 로컬 미니마에 갇히면 성능이 파멸적인 수준에 머무를 것이다"라는 가설은 현대 딥러닝에 이르러 대단한 반전을 맞이합니다.</p>
+  <ul>
+    <li><strong>매개변수 증가의 이점:</strong> 모델의 크기가 커지고 파라미터의 개수가 기하급수적으로 증가할수록, 역설적으로 <strong>치명적인 로컬 미니마의 위협은 무시할 수 있을 수준으로 사라집니다</strong>.</li>
+    <li><strong>통계적 평준화 (Choromanska et al.):</strong> 대규모 신경망에도 수많은 가짜 바닥(Local optima)이 존재합니다. 하지만 통계적으로 이 가짜 바닥들의 Loss 값을 분석해 보면, <strong>전역 최적점(Global Optimum)의 손실 값과 비교했을 때 그리 나쁘지 않은 수준으로 완벽하게 평준화</strong>됩니다.</li>
+    <li><strong>실전 증명:</strong> 은닉층의 뉴런 개수(<code>nhidden</code>)를 25개 → 500개로 확장할수록 최종 손실 분포의 편차가 좌측 하단(0에 가까운 고도)으로 조밀하게 밀집되는 통계 그래프가 이를 증명합니다.</li>
+  </ul>
+  <div class="callout callout-tip">
+    <div class="callout-title"><span class="callout-icon">🎯</span>핵심 결론</div>
+    <p>거대 모델을 학습시킬 때는 경사하강법이 굳이 전역 최적점(Global Optimum)을 찾지 못하고 대충 아무 로컬 미니마에 안착하더라도, 그 성능이 전역 최적점과 수학적으로 크게 다르지 않으므로 안심하고 학습을 밀어붙여도 좋습니다.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════ PART 4 ═══════════════════ -->
+<div class="part-divider"><span>Part 4 — 플래토·안장점·헤시안</span></div>
+
+<!-- 4.1 -->
+<div class="section">
+  <h2><span class="num">4.1</span>평지 지형(Plateaus)의 공포와 학습률의 딜레마<span class="page-badge">Page 10</span></h2>
+  <ul>
+    <li><strong>플래토(Plateau)에서의 고립:</strong> 지형이 평평한 플래토 구간에 진입하면 기울기가 거의 0에 수렴하게 됩니다. 보폭이 너무 작으면 가중치가 이 거대한 평지를 빠져나오지 못하고 영원히 고립됩니다.</li>
+    <li><strong>탈출 조건:</strong> 평지 지형을 만나더라도 멈추지 않고 미끄러져 탈출할 수 있도록, <strong>보폭(Learning rate)이 어느 정도 충분히 커야만 합니다</strong>.</li>
+    <li><strong>해결책 예고:</strong> 뒤에서 배우게 될 <strong>모멘텀(Momentum, 관성)</strong> 기법을 도입하면 이 플래토 정체 문제를 압도적으로 깔끔하게 해결할 수 있습니다.</li>
+  </ul>
+</div>
+
+<!-- 4.2 -->
+<div class="section">
+  <h2><span class="num">4.2</span>안장점(Saddle Points)과 고차원 임계점 분석<span class="page-badge">Page 11</span></h2>
+  <p>손실 함수를 파라미터로 미분한 그레이디언트 벡터가 완벽하게 0이 되는 지점을 통틀어 <strong>임계점(Critical points)</strong>이라고 선언합니다.</p>
+  <div class="math-block">$$\nabla_{\theta}\mathcal{L}(\theta)=0$$</div>
+  <ul>
+    <li><strong>안장점 지형의 특징:</strong> 안장점 주변은 <strong>그레이디언트(기울기 벡터)의 크기가 극단적으로 아주 작아지는 특성</strong>을 갖습니다.</li>
+    <li><strong>연산의 정체:</strong> 이 때문에 일반 경사하강법을 돌리면 안장점 중심부에서 탈출하는 데 <strong>우주적인 시간(It takes a long time to get out)이 소요</strong>되는 치명적인 최적화 정체 문제를 유발합니다.</li>
+  </ul>
+</div>
+
+<!-- 4.3 -->
+<div class="section">
+  <h2><span class="num">4.3</span>이차 편미분의 도입: 헤시안 행렬<span class="page-badge">Page 11</span></h2>
+  <p>기울기가 0이 되었을 때 주변 지형의 곡률을 완벽하게 파악하기 위해, 모든 파라미터 조합에 대해 <strong>두 번 미분(이차 편미분)</strong>을 수행한 $n \times n$ 차원의 스퀘어 행렬을 <strong>헤시안 행렬(Hessian Matrix)</strong>이라고 부릅니다.</p>
+  <div class="math-block">$$\nabla_{\theta}^{2}\mathcal{L}(\theta)$$</div>
+  <h3>🧮 3차원 공간에서의 헤시안 행렬 구조</h3>
+  <div class="math-block">$$\begin{bmatrix} \frac{\partial^2\mathcal{L}}{\partial\theta_1^2} & \frac{\partial^2\mathcal{L}}{\partial\theta_1\partial\theta_2} & \frac{\partial^2\mathcal{L}}{\partial\theta_1\partial\theta_3} \\ \frac{\partial^2\mathcal{L}}{\partial\theta_2\partial\theta_1} & \frac{\partial^2\mathcal{L}}{\partial\theta_2^2} & \frac{\partial^2\mathcal{L}}{\partial\theta_2\partial\theta_3} \\ \frac{\partial^2\mathcal{L}}{\partial\theta_3\partial\theta_1} & \frac{\partial^2\mathcal{L}}{\partial\theta_3\partial\theta_2} & \frac{\partial^2\mathcal{L}}{\partial\theta_3^2} \end{bmatrix}$$</div>
+  <ul>
+    <li><strong>헤시안의 지형 판별:</strong> 헤시안 행렬의 고유값(Eigenvalues)이 모두 양수이면 <strong>지역 최적점(Minimum)</strong>, 모두 음수이면 <strong>최대점(Maximum)</strong>, 양수와 음수가 뒤섞여 있다면 <strong>안장점(Saddle Point)</strong>으로 판정합니다.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════ PART 5 ═══════════════════ -->
+<div class="part-divider"><span>Part 5 — 모멘텀(Momentum)</span></div>
+
+<!-- 5.1 -->
+<div class="section">
+  <h2><span class="num">5.1</span>방향의 가속화 기법: 모멘텀(Momentum)의 도입<span class="page-badge">Page 16</span></h2>
+  <p>2차 미분(헤시안 행렬)을 계산하는 것은 연산 비용 측면에서 불가능하므로, 오직 1차 미분(그레이디언트)만을 조작하여 경사하강법을 가속하는 대안을 설계해야 합니다. 그 첫 번째 핵심 치트키가 바로 물리학적 관성을 수식화한 <strong>모멘텀(Momentum)</strong> 기법입니다.</p>
+  <ul>
+    <li><strong>기본 직관 (Intuition):</strong> 연이어 계산되는 연속적인 그레이디언트 스텝들의 방향을 결합하고 평균을 내면, 요동치지 않는 훨씬 더 우수한 전진 방향을 도출할 수 있습니다.</li>
+    <li><strong>지그재그 노이즈 상쇄:</strong> 좁은 협곡 지형에서 연속적인 그레이디언트 스텝들이 서로 반대 방향을 가리키며 요동친다면, 서로 동의하지 않는 축의 방향 성분들을 수학적으로 계산하여 <strong>서로 지워버리고 상쇄(cancel off)</strong>시킵니다.</li>
+    <li><strong>일관된 방향의 가속:</strong> 반대로, 연속적인 그레이디언트 스텝들이 동일하거나 유사한 방향을 가리키고 있다면, 그 방향으로 관성이 붙어 <strong>더욱 빠른 속도로 가속(go faster in that direction)</strong>하여 플래토나 안장점을 돌파하게 만듭니다.</li>
+  </ul>
+</div>
+
+<!-- 5.2 -->
+<div class="section">
+  <h2><span class="num">5.2</span>모멘텀(Momentum)의 최종 수학적 업데이트 규칙<span class="page-badge">Page 17</span></h2>
+  <h3>① 파라미터 업데이트 기본 방정식</h3>
+  <div class="math-block">$$\theta_{k+1} = \theta_{k} - \alpha g_{k}$$</div>
+  <ul>
+    <li>$\theta_k$: 현재 스텝의 가중치 파라미터</li>
+    <li>$\alpha$: 학습률(Learning rate)</li>
+    <li>$g_k$: 단순 그레이디언트가 아니라, 관성이 반영된 최종 <strong>방향 속도 벡터</strong></li>
+  </ul>
+  <h3>② 속도 벡터 $g_k$의 누적 연산 공식 (가장 중요)</h3>
+  <div class="math-block">$$\begin{aligned} \text{기존 방식:} \quad g_{k} &= \nabla_{\theta}\mathcal{L}(\theta_{k}) \\ \text{모멘텀 방식:} \quad g_{k} &= \nabla_{\theta}\mathcal{L}(\theta_{k}) + \mu g_{k-1} \end{aligned}$$</div>
+  <ul>
+    <li>$\nabla_{\theta}\mathcal{L}(\theta_{k})$: 현재 위치에서 미분해 얻은 날것의 그레이디언트</li>
+    <li>$g_{k-1}$: 바로 직전 스텝에서 모델이 이동했던 과거의 속도 벡터</li>
+    <li>$\mu$ (마이): <strong>모멘텀 계수(Momentum hyperparameter)</strong>로, 대개 <code>0.9</code>나 <code>0.99</code> 사이의 상수를 사용</li>
+  </ul>
+  <h3>③ 모멘텀 기법의 실전 이득과 한계</h3>
+  <ul>
+    <li><strong>압도적인 가성비:</strong> 수식 구조가 극도로 단순하여 추가적인 컴퓨터 메모리나 가중치 연산 비용이 <strong>사실상 제로(virtually no cost)</strong>에 가깝습니다. 그럼에도 불구하고, 비싼 뉴턴 방법이 제공했던 요동 제어 및 평지 탈출의 실전 이득을 고스란히 가져옵니다.</li>
+    <li><strong>수학적 한계:</strong> 실전 성능은 압도적이지만, 비볼록 지형에서 수렴을 완벽하게 보장하는 통계학적 증명(few guarantees)은 거의 존재하지 않습니다.</li>
+    <li><strong>네스테로프 가속 경사 (NAG):</strong> 모멘텀과 매우 유사하면서도 수학적 수렴 보장 조건을 충족시키는 기법도 존재하지만, <strong>현대 딥러닝 실전 엔지니어링에서는 연산이 깔끔한 일반 모멘텀을 압도적으로 많이 사용</strong>합니다.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════ PART 6 ═══════════════════ -->
+<div class="part-divider"><span>Part 6 — AdaGrad &amp; RMSProp</span></div>
+
+<!-- 6.1 -->
+<div class="section">
+  <h2><span class="num">6.1</span>그레이디언트 스케일(Gradient Scale)의 난제<span class="page-badge">Page 18</span></h2>
+  <ul>
+    <li><strong>방향 vs 크기 (Intuition):</strong> 그레이디언트의 부호(Sign)는 각 차원별로 어느 방향으로 전진해야 하는지 정확히 알려줍니다. 하지만 미분값의 '크기(Magnitude)' 자체는 최적화에 그리 좋은 지표가 아닙니다.</li>
+    <li><strong>극단적인 스케일 변화:</strong> 그레이디언트의 전체적인 크기는 학습이 진행됨에 따라 극단적으로 요동치며 변합니다. 이 때문에 학습률(Learning rate) 하나를 예쁘게 튜닝하는 것이 실전에서 불가능에 가까워집니다.</li>
+    <li><strong>해결 아이디어:</strong> 그레이디언트의 크기에 휘둘리지 않도록, 각 파라미터 차원별 경사도 크기를 측정하여 <strong>보폭을 공평하게 1로 정규화(Normalize out the magnitude)</strong>해버리는 방식을 도입합니다.</li>
+  </ul>
+</div>
+
+<!-- 6.2 -->
+<div class="section">
+  <h2><span class="num">6.2</span>누적 보폭 조절의 선구자: AdaGrad<span class="page-badge">Page 20</span></h2>
+  <p>각 파라미터 차원별로 <strong>"지금까지 얼마나 많은 걸음을 걸어왔는가"</strong>를 기준으로 보폭을 자동으로 줄여주는 알고리즘입니다.</p>
+  <h3>① AdaGrad 업데이트 공식</h3>
+  <div class="math-block">$$\begin{aligned} s_{k} &\leftarrow s_{k-1} + (\nabla_{\theta}\mathcal{L}(\theta_{k}))^2 \\ \theta_{k+1} &= \theta_{k} - \alpha \frac{\nabla_{\theta}\mathcal{L}(\theta_{k})}{\sqrt{s_{k}} + \epsilon} \end{aligned}$$</div>
+  <ul>
+    <li><strong>$s_k$:</strong> 학습 시작부터 현재 스텝까지 발생한 <strong>모든 그레이디언트의 제곱합을 누적</strong>한 벡터</li>
+    <li><strong>수식의 의미:</strong> 그레이디언트가 자주 발생해 $s_k$ 값이 커진 파라미터 축은 분모가 커지므로 다음 스텝의 보폭이 대폭 축소됩니다. 즉, 한 번도 안 가본 축으로는 성큼성큼 가고, 이미 많이 가본 축으로는 조심조심 걷게 만듭니다.</li>
+  </ul>
+  <div class="callout callout-danger">
+    <div class="callout-title"><span class="callout-icon">🛑</span>AdaGrad의 치명적인 한계</div>
+    <p>$s_k$는 과거의 미분 제곱 값을 오직 덧셈($+$)으로만 누적합니다. 학습이 장기화될수록 $s_k$는 무한대로 커지며, 결국 분모가 너무 커져 <strong>학습이 전역 최적점에 도달하기도 전에 보폭이 0이 되어 멈춰버리는(Learning rate decays too much) 치명적인 조기 정체 현상</strong>이 발생합니다. 볼록(Convex) 문제에서는 보장이 유효하나, 심층 신경망에서는 최악의 쥐약입니다.</p>
+  </div>
+</div>
+
+<!-- 6.3 -->
+<div class="section">
+  <h2><span class="num">6.3</span>실전 딥러닝의 구원투수: RMSProp<span class="page-badge">Page 19~20</span></h2>
+  <p>AdaGrad의 보폭 소멸 문제를 해결하기 위해, 아주 오래된 과거의 발자국은 잊어버리고 <strong>최근 걸어온 보폭의 크기만을 반영하는 이동 평균(Running Average)</strong> 기법을 도입한 알고리즘입니다.</p>
+  <h3>① RMSProp 업데이트 공식</h3>
+  <div class="math-block">$$\begin{aligned} s_{k} &\leftarrow \beta s_{k-1} + (1-\beta)(\nabla_{\theta}\mathcal{L}(\theta_{k}))^2 \\ \theta_{k+1} &= \theta_{k} - \alpha \frac{\nabla_{\theta}\mathcal{L}(\theta_{k})}{\sqrt{s_{k}} + \epsilon} \end{aligned}$$</div>
+  <ul>
+    <li><strong>$\beta$ (베타):</strong> 감쇠 가중치(Decay factor)로, 대개 <code>0.9</code>를 사용</li>
+    <li><strong>수식의 의미:</strong> 과거의 누적 스케일($s_{k-1}$)은 $\beta$ 비율만큼 깎아서 빛바래게 만들고, 현재 스텝의 스케일에는 $(1-\beta)$만큼만 더합니다.</li>
+    <li><strong>결과:</strong> 분모 $s_k$가 무한대로 폭발하는 현상이 완벽하게 차단되어, <strong>딥러닝과 같은 대규모 비볼록(Non-convex) 문제를 풀 때 AdaGrad보다 압도적으로 우수한 실전 성능(Much better for deep learning)</strong>을 발휘합니다.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════ PART 7 ═══════════════════ -->
+<div class="part-divider"><span>Part 7 — Adam &amp; 미니배치 SGD</span></div>
+
+<!-- 7.1 -->
+<div class="section">
+  <h2><span class="num">7.1</span>현대 딥러닝 최적화의 표준: Adam</h2>
+  <p>현대 인공지능 분야에서 가장 지배적으로 사용되는 표준 옵티마이저입니다. 핵심은 아주 명쾌합니다. 앞서 배운 <strong>"관성을 이용해 방향을 잡아주는 모멘텀(Momentum)"의 장점과 "차원별로 보폭을 정규화하는 RMSProp"의 장점을 완벽하게 결합</strong>한 것입니다.</p>
+</div>
+
+<!-- 7.2 -->
+<div class="section">
+  <h2><span class="num">7.2</span>Adam의 단계별 수학적 유도 공식</h2>
+  <p>Adam은 1차 모멘트(방향 평균)와 2차 모멘트(보폭 평균)를 동시에 추적하며 가중치를 업데이트합니다.</p>
+  <h3>① 1차 및 2차 모멘트 이동 평균 계산</h3>
+  <div class="math-block">$$\begin{aligned} m_{k} &= (1-\beta_{1})\nabla_{\theta}\mathcal{L}(\theta_{k}) + \beta_{1}m_{k-1} \\ v_{k} &= (1-\beta_{2})(\nabla_{\theta}\mathcal{L}(\theta_{k}))^{2} + \beta_{2}v_{k-1} \end{aligned}$$</div>
+  <ul>
+    <li><strong>$m_k$ (First Moment):</strong> 모멘텀과 동일하게 그레이디언트의 방향 지수 이동 평균을 추적합니다.</li>
+    <li><strong>$v_k$ (Second Moment):</strong> RMSProp과 동일하게 그레이디언트 제곱의 크기 지수 이동 평균을 추적합니다.</li>
+    <li><strong>하이퍼파라미터 디폴트 설정:</strong>
+      <ul style="margin-top:8px;">
+        <li>$\beta_1 = 0.9$ (과거 방향을 90% 반영)</li>
+        <li>$\beta_2 = 0.999$ (과거 보폭 스케일을 99.9% 반영)</li>
+      </ul>
+    </li>
+  </ul>
+  <h3>② 초기 편향 왜곡 수정 (Bias Correction)</h3>
+  <p>학습 초기 스텝에는 $m_0 = 0, v_0 = 0$으로 초기화되어 있기 때문에, $m_k$와 $v_k$의 수치가 실제보다 0에 가깝게 왜곡됩니다. 이를 정상 스케일로 <strong>강제로 보정(blows them up a bit)</strong>해주는 단계입니다.</p>
+  <div class="math-block">$$\begin{aligned} \hat{m}_{k} &= \frac{m_{k}}{1-\beta_{1}^{k}} \\ \hat{v}_{k} &= \frac{v_{k}}{1-\beta_{2}^{k}} \end{aligned}$$</div>
+  <p>분모의 $\beta^k$는 스텝 $k$가 커질수록 0에 수렴하므로, 학습이 본격 궤도에 오르면 분모가 1이 되어 보정 알고리즘이 자연스럽게 소멸합니다.</p>
+  <h3>③ 최종 가중치 업데이트 방정식</h3>
+  <div class="math-block">$$\theta_{k+1} = \theta_{k} - \alpha \frac{\hat{m}_{k}}{\sqrt{\hat{v}_{k}} + \epsilon}$$</div>
+  <ul>
+    <li><strong>$\alpha$ (학습률):</strong> 실전 기본 권장 값은 $0.001$입니다.</li>
+    <li><strong>$\epsilon$ (입실론):</strong> $10^{-8}$ 수준의 극도로 작은 상수로, <strong>분모 제로 에러를 방지</strong>하기 위한 안전장치입니다.</li>
+    <li><strong>결론:</strong> 분자($\hat{m}_k$)를 통해 관성이 붙은 영리한 방향으로 전진하고, 분모($\sqrt{\hat{v}_k}$)를 통해 각 차원별 스케일에 맞춤형으로 변형된 최적의 보폭을 밟게 됩니다.</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════ PART 8 ═══════════════════ -->
+<div class="part-divider"><span>Part 8 — 미니배치 SGD &amp; 하이퍼파라미터 전략</span></div>
+
+<!-- 8.1 -->
+<div class="section">
+  <h2><span class="num">8.1</span>확률적 최적화: 미니배치 경사하강법 (SGD with Minibatches)<span class="page-badge">Page 22</span></h2>
+  <p>현대 대용량 딥러닝에서는 데이터셋 전체($N$)를 한 번에 계산하는 배치 경사하강법이 불가능합니다. 따라서 무작위로 추출한 데이터 조각을 활용해 학습을 전진시킵니다.</p>
+  <h3>① 미니배치 SGD의 3단계 알고리즘 연산 과정</h3>
+  <ol>
+    <li><strong>데이터 샘플링 (Sample $\mathcal{B} \subset \mathcal{D}$):</strong> 전체 데이터셋 $N$ 중에서 무작위로 $B$개의 데이터 포인트(미니배치)를 추출합니다.</li>
+    <li><strong>그레이디언트 추정 (Estimate $g_k$):</strong> 추출한 $B$개의 샘플에 대해서만 평균 음의 로그 우도 손실 함수를 계산하고, 이를 파라미터로 편미분하여 그레이디언트 추정치($g_k$)를 도출합니다.
+      <div class="math-block">$$g_{k} \leftarrow -\nabla_{\theta}\frac{1}{B}\sum_{i=1}^{B}\log p(y_{i}|x_{i},\theta) \approx \nabla_{\theta}\mathcal{L}(\theta)$$</div>
+    </li>
+    <li><strong>파라미터 업데이트:</strong> 계산된 미니배치 그레이디언트 방향과 학습률을 곱해 가중치를 즉각 갱신합니다.
+      <div class="math-block">$$\theta_{k+1} \leftarrow \theta_{k} - \alpha g_{k}$$</div>
+    </li>
+  </ol>
+  <h3>② 실전 엔지니어링에서의 트릭 (SGD in practice)</h3>
+  <ul>
+    <li><strong>메모리 접근 한계:</strong> 매 스텝마다 완벽하게 무작위(Random access)로 $B$개를 골라내는 것은 입출력(I/O) 연산 속도를 극도로 저하시킵니다.</li>
+    <li><strong>셔플 알고리즘의 도입:</strong> 학습 시작 전 전체 데이터셋의 순서를 딱 한 번 무작위로 뒤흔들어 섞어둡니다(<strong>Shuffle the dataset once, in advance</strong>). 그다음부터는 앞에서부터 차례대로 $B$개씩 연속된 그룹으로 쪼개어 배치(Consecutive groups of B datapoints)를 구성하는 방식으로 하드웨어 연산 효율을 극대화합니다.</li>
+  </ul>
+</div>
+
+<!-- 8.2 -->
+<div class="section">
+  <h2><span class="num">8.2</span>하이퍼파라미터 최종 튜닝 및 정석 전략<span class="page-badge">Page 23</span></h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>하이퍼파라미터</th>
+          <th>기호</th>
+          <th>실전 권장 세팅 및 튜닝 법칙</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>배치 사이즈<br>(Batch Size)</td>
+          <td>$B$</td>
+          <td>배치 크기가 커질수록 그레이디언트의 노이즈가 줄어들어 훨씬 안정적인 하강 경로를 확보할 수 있습니다. GPU 메모리가 허용하는 한 <strong>가장 거대한 배치 크기를 선택</strong>하는 것이 정석입니다.</td>
+        </tr>
+        <tr>
+          <td>학습률<br>(Learning Rate)</td>
+          <td>$\alpha$</td>
+          <td>초기에는 모델이 폭발하지 않고 <strong>정상적으로 작동하는 한 가장 거대한 학습률(Biggest rate that still works)을 선택</strong>해 빠르게 내리막길을 내려오고, 시간이 지남에 따라 보폭을 점진적으로 줄여나가는 <strong>스케줄러 감쇠(Decay over time)</strong> 전략을 취합니다.</td>
+        </tr>
+        <tr>
+          <td>모멘텀 계수<br>(Momentum)</td>
+          <td>$\mu$</td>
+          <td>최적의 고정 상수는 <strong>0.99</strong>입니다. 굳이 이 값을 찾겠다고 그리드 서치를 돌리며 아까운 컴퓨팅 자원을 낭비하지 마세요.</td>
+        </tr>
+        <tr>
+          <td>Adam 파라미터</td>
+          <td>$\beta_1, \beta_2$</td>
+          <td>특별한 도메인 지식이 없는 한, 논문과 프레임워크에 정의된 오리지널 <strong>기본 디폴트 세팅($\beta_1=0.9, \beta_2=0.999$)을 그대로 복제하여 유지</strong>하는 것이 원칙입니다.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>⚠️ 최적화 파라미터를 판단하는 타깃 데이터의 진실</h3>
+  <ul>
+    <li><strong>통념의 모순:</strong> 하이퍼파라미터는 최적화 알고리즘 자체의 변수(Parameter of the optimization)이기 때문에, 이론적으로는 훈련 데이터셋의 손실(<strong>Training loss</strong>)을 기준으로 튜닝하는 것이 타당해 보입니다.</li>
+    <li><strong>실전의 정석:</strong> 하지만 실제 엔지니어링 환경에서는 대부분 검증 데이터셋의 손실(<strong>Validation loss</strong>)을 보고 하이퍼파라미터를 결정합니다.</li>
+    <li><strong>이유 (Regularization):</strong> 미니배치 SGD 특유의 무작위 노이즈 성분 자체가 모델의 과적합을 원천 차단하는 대단히 유수한 <strong>규제(Good regularizer)</strong> 역할을 수행하기 때문입니다. 따라서 우리는 모델의 최종 일반화 성능을 정밀하게 포착하기 위해 반드시 검증 손실을 모니터링하며 최적의 하이퍼파라미터를 엄밀하게 확정해야 합니다.</li>
+  </ul>
+</div>
+
+</div><!-- /container -->
+</body>
+</html>
